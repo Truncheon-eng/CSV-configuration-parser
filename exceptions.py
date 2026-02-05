@@ -8,14 +8,15 @@ class FieldException(Exception):
 
 
 class ParserException(Exception):
-    def __init__(self, curr_row_index, message, file_name):
-        self.curr_row_index = curr_row_index
+    __marker = "[x]"
+    def __init__(self, message):
         self.message = message
-        self.file_name = file_name
 
     def __str__(self):
-        error = f"Error at {self.curr_row_index} row in \"{self.file_name}\": {self.message}"
-        return error
+        error_result = list()
+        for seq in self.message.split("\n"):
+            error_result.append(f"{self.__marker} {seq}")
+        return "\n".join(error_result) 
 
 
 class ParserWarning:
