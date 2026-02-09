@@ -1,2 +1,4 @@
 __pycache__
+*.csv
 OTU4_CONVERTER.csv*
+check.py
