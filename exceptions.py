@@ -1,22 +1,9 @@
-class FieldException(Exception):
-    def __init__(self, expected_list, real_list):
-        self.expected_list = expected_list
-        self.real_list = real_list
-
-    def __str__(self):
-        return f"\nExpected: {self.expected_list}\n" + f"Received instead: {self.real_list}"
-
-
 class ParserException(Exception):
-    __marker = "[x]"
     def __init__(self, message):
         self.message = message
 
     def __str__(self):
-        error_result = list()
-        for seq in self.message.split("\n"):
-            error_result.append(f"{self.__marker} {seq}")
-        return "\n".join(error_result) 
+        return self.message
 
 
 class ParserWarning:

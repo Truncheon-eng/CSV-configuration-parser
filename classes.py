@@ -1,4 +1,6 @@
+import csv
 from exceptions import ParserException
+from output import print_warning
 
 class Field:
     # TODO: по запросу расширить кол-во необходимых полей
@@ -16,13 +18,6 @@ class Field:
                   f"Implementation: {'None' if self.implementation == '' else self.implementation}, "
                   f"Dimension: {self.dimension};")
         return result
-
-    # def __eq__(self, other):
-    #     return  self.field_name == other.field_name and self.implementation == other.implementation and self.dimension == self.dimension
-    
-    # def __hash__(self):
-    #     # TODO: подумать насколько вообщехорошо делать такого рода хеш в объектк с тремя полями
-    #     return hash(self.field_name)
 
 class FieldValidator:
     def __init__(self, fields: list, marker: str):
@@ -52,13 +47,6 @@ class FieldValidator:
 
 
 class InOutFields:
-    """
-    Данный клас содержит в себе всю необходимую информацию:
-        marker - входные / выходные вектора
-        total_bits - общее кол-во битов входных / выходных векторов
-        total_bytes - общее кол-во байтов входных / выходных векторов
-        fields - массивы полей входных / выходных векторов
-    """
     def __init__(
             self, 
             marker: str, 
@@ -70,24 +58,19 @@ class InOutFields:
         try:
             self.total_bits = int(total_bits)
         except (ValueError, TypeError):
-            message = f"\"{total_bits}\" in Total_Bits_... can't be interpreted as integer value!"
+            message = f"\"{total_bits}\" in Total_Bits_... can't be interpreted as integer value, when reading {InOutFields.__name__}"
             raise ParserException(message)
         
         try:
             self.total_bytes = int(total_bytes)
         except (ValueError, TypeError):
-            message = f"\"{total_bytes}\" in Total_Bytes_... can't be interpreted as integer value!"
+            message = f"\"{total_bytes}\" in Total_Bytes_... can't be interpreted as integer value, when reading {InOutFields.__name__}"
             raise ParserException(message)
 
         self.fields = fields
         
 class ModuleInfo:
-    """
-    Класс для хранения информации модуля
-    Пока добавлены два поля: 
-        module: название самого модуля(то что следует за __Module__ в .csv файле)
-        module_id: в большинстве .csv файлов отсутствовал
-    """
+
     def __init__(self, module: str, module_id: str):
         # TODO: насколько помню не везде присутствует __Subsystems__
         # TODO: насколько целесообразно тогда добавлять эти поля
@@ -95,22 +78,20 @@ class ModuleInfo:
         try:
             self.module_id = int(module_id)
         except (TypeError, ValueError):
-            print(f"[i] \"{module_id}\" value can't be interpreted as integer")
+            message = f"\"{module_id}\" value can't be interpreted as integer, when reading {ModuleInfo.__name__}"
+            print_warning(message)
             self.module_id = None
     
     
     def __str__(self):
-        result = f"[i] Module: {self.module}\n"
-        result += f"[i] Module ID: {self.module_id}"
-        return result
+        message = f"Module: {self.module}\n"
+        message += f"Module ID: {self.module_id}"
+        return message
 
 
 class BufferStream:
-    """
-    Класс для буферизированного вывода строк.
-    Размер буфера равен одной строке.
-    Вызов метода step_back приводит к исключению.
-    """
+
+    __num_of_cells = 7
     def __init__(self, file):
         self.file = file
         self.last_line = None
@@ -128,31 +109,36 @@ class BufferStream:
         
         self.last_line = self.file.readline()
         
+        csv_reader = csv.reader([self.last_line])
+
+        if len(next(csv_reader)) != self.__num_of_cells:
+            message = f"\"{self.last_line.strip()}\" doesn't contain {self.__num_of_cells} cells"
+            raise ParserException(message)
+
         return self.last_line
 
-    """
-    step_back - указывает на то, что последнюю 
-    полученную строку нужно переиспользовать
-    Args:
-        self
-    Returns:
-        None
-    """
     def step_back(self) -> None:
+        """
+        Метод step_back выставляет поле is_waiting в True, чтобы следующее считывание, происходило из последней
+        считанной строки
+        
+        :param self: объект класса BufferStream
+        """
         if self.is_waiting:
-            message = "double call of step_back in BufferStream isntance"
+            message = f"Double call of {BufferStream.step_back.__name__} in {BufferStream.__name__}"
             raise ParserException(message)
         self.is_waiting = True
         return
     
-    """
-    eof - определяет закончился ли файл или нет
-    Args:
-        self
-    Returns:
-        bool - (True - конец файла / False - еще не закончился)
-    """
+
     def eof(self) -> bool:
+        """
+        Метод eof предназначен дял определения конца файла.
+        
+        :param self: объект типа BufferStream
+        :return: конец файла (True / False)
+        :rtype: bool
+        """
         symbol = self.file.read(1)
         
         if symbol:
