@@ -1,4 +1,11 @@
 class ParserException(Exception):
+    """
+    Класс ошибки парсера. Простоя обёртка над Exception.
+    
+    :ivar message: сообщение об ошибке.
+    :vartype __table_fields: str
+    """
+    
     def __init__(self, message):
         self.message = message
 

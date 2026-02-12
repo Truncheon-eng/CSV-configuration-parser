@@ -3,6 +3,20 @@ from exceptions import ParserException
 from output import print_warning
 
 class Field:
+    """
+    Класс поля. Пример поля (в .csv файле):
+        - [127:0],128,0x00,-,DATA,DATA_IN,DATA_IN, где
+        - [127:0] - значение __Implementation__
+        - 128 - значение __Dimension__
+        - 0x00 - значение __TV_Offset__
+        - "-" - значение __Bit_Position
+        - "DATA" - значение __RTL_Signal__
+        - "DATA_IN" - значение __Model_Signal__
+        - "DATA_IN" - значение __Doc_Signal__
+    
+    :ivar __table_fields: Список названий полей соотв. ячеек.
+    :vartype __table_fields: list[str]
+    """
     # TODO: по запросу расширить кол-во необходимых полей
     def __init__(self, field_name, implementation, dimension):
         self.field_name = field_name
@@ -47,6 +61,21 @@ class FieldValidator:
 
 
 class InOutFields:
+    """
+    Класс множества полей определенной структуры (либо Inputs, либо Outputs)
+    
+    :ivar marker: тип векторов (само значение берется из первой ячейки строчек типа: "INPUTS,Total_Bits_In,136,Total_Bytes_In,17,,").
+    :vartype __table_fields: str
+
+    :ivar total_bits: общее кол-во битов (входных / выходных)
+    :vartype total_bits: int
+
+    :ivar total_bytes: общее кол-во байтов (входных / выходных)
+    :vartype total_bits: int
+
+    :ivar fields: поля, записанные в .csv файле (входные / выходные)
+    :vartype fields: list[Field]
+    """
     def __init__(
             self, 
             marker: str, 
@@ -70,7 +99,15 @@ class InOutFields:
         self.fields = fields
         
 class ModuleInfo:
+    """
+    Класс метаинформации модуля, содержит в себе информацию о модуле, ID модуля.
+    
+    :ivar module: название модуля.
+    :vartype module: str
 
+    :ivar module_id: ID модуля.
+    :vartype module_id: int
+    """
     def __init__(self, module: str, module_id: str):
         # TODO: насколько помню не везде присутствует __Subsystems__
         # TODO: насколько целесообразно тогда добавлять эти поля

@@ -7,7 +7,24 @@ from exceptions import ParserException
 from classes import Field, FieldValidator, BufferStream, ModuleInfo, InOutFields
 
 class App:
-    # статическое поле с описанием полей .csv файла
+    """
+    Класс приложения-парсера, необходимый для запуска самого парсера.
+    
+    :ivar __table_fields: Список названий полей соотв. ячеек.
+    :vartype __table_fields: list[str]
+    
+    :ivar __curr_row_index: Индекс текущей рассматривавемой строки.
+    :vartype __curr_row_index: int
+
+    :ivar path_config: Путь до .csv конфигурационного файла.
+    :vartype path_config: pathlib.Path
+
+    :ivar dir: Путь до директории, в которой предположительно находятся тестовые вектора.
+    :vartype dir: pathlib.Path
+
+    :ivar verbosity: Параметр "многословности", определяющий необходимо ли выводить дополнительную информацию.
+    :vartype verbosity: bool
+    """
     __table_fields = [
         "__Implementation__",
         "__Dimension__",
