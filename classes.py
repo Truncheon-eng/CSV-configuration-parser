@@ -65,7 +65,7 @@ class FieldValidator:
 
         result.append(f"{self.marker}; Number of fields with files - {with_files}; Total number of fields - {total}")
         if len(without_files) != 0:
-            result.append(f"{self.marker}: Fields without files - {', '.join(without_files)}")
+            result.append(f"{self.marker}; Fields without files - {', '.join(without_files)}")
         return "\n".join(result)
 
 
