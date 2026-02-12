@@ -7,6 +7,7 @@ from exceptions import ParserException
 from classes import Field, FieldValidator, BufferStream, ModuleInfo, InOutFields
 
 class App:
+    #TODO: поменять документацию в соотв. с новыми добавленными полями
     """
     Класс приложения-парсера, необходимый для запуска самого парсера.
     
@@ -19,8 +20,11 @@ class App:
     :ivar path_config: Путь до .csv конфигурационного файла.
     :vartype path_config: pathlib.Path
 
-    :ivar dir: Путь до директории, в которой предположительно находятся тестовые вектора.
-    :vartype dir: pathlib.Path
+    :ivar input: Путь до директории, в которой предположительно находятся входные тестовые вектора.
+    :vartype input: pathlib.Path
+
+    :ivar output: Путь до директории, в которой предположительно находятся выходные тестовые вектора.
+    :vartype output: pathlib.Path
 
     :ivar verbosity: Параметр "многословности", определяющий необходимо ли выводить дополнительную информацию.
     :vartype verbosity: bool
@@ -38,7 +42,7 @@ class App:
     # статическое поле с индексом рассматриваемой строки 
     __curr_row_index = 0
 
-    def __init__(self, path_config: str, dir: str, verbosity: bool):
+    def __init__(self, path_config: str, input: str, output: str, verbosity: bool):
         # проверка переданных путей
         self.path_config = pathlib.Path(path_config)
         if not (self.path_config.exists()):
@@ -49,15 +53,24 @@ class App:
             message = f"\"{self.path_config.absolute()}\" isn't file"
             raise ParserException(message)
 
-        self.dir = pathlib.Path(dir)
-        if not (self.dir.exists()):
-            message = f"Directory \"{self.dir.absolute()}\" doesn't exist"
+        self.input = pathlib.Path(input)
+        if not (self.input.exists()):
+            message = f"Directory \"{self.input.absolute()}\" for input vectors doesn't exist"
             raise ParserException(message)
 
-        if not (self.dir.is_dir()):
-            message = f"\"{self.dir.absolute()}\" isn't a directory"
+        if not (self.input.is_dir()):
+            message = f"\"{self.input.absolute()}\" for input vectors isn't a directory"
             raise ParserException(message)
 
+        self.output = pathlib.Path(output)
+        if not (self.output.exists()):
+            message = f"Directory \"{self.output.absolute()}\" for output vectors doesn't exist"
+            raise ParserException(message)
+
+        if not (self.output.is_dir()):
+            message = f"\"{self.output.absolute()}\" for output vectors isn't a directory"
+            raise ParserException(message)
+        
         self.verbosity = verbosity
     
     def __read_header(self, buffer_stream: BufferStream) -> ModuleInfo:
@@ -123,7 +136,7 @@ class App:
 
                 if not self.__is_info(row):
                     delim = csv_reader.dialect.delimiter
-                    message = f"\"{delim.join(row)}\" doesn't fit \"^(IN|OUT)PUTS,Total_Bits_(In|Out),\d+,Total_Bytes_(In|Out),\d+,,$\" regex!"
+                    message = f"\"{delim.join(row)}\" doesn't fit \"^(IN|OUT)PUTS,Total_Bits_(In|Out),\\d+,Total_Bytes_(In|Out),\\d+,,$\" regex!"
                     raise ParserException(message)
                 
                 marker = row[0]
@@ -196,7 +209,7 @@ class App:
     
         return True
 
-    def __check_directory(self, fields: list[Field], marker: str, path: pathlib.Path):
+    def __check_directory(self, fields: list[Field], marker: str, path: pathlib.Path) -> str:
         """
         Метод __check_directory предназначен для проверки директорий на наличие файлов с
         похожими именами из fields
@@ -204,13 +217,14 @@ class App:
         :param self: объект класса App
         :param fields: список полей
         :type fields: list[Field]
-        :param marker: строка маркер ("Inputs" или "Outputs")
+        :param marker: строка маркер ("INPUTS" или "OUTPUTS")
         :type marker: str
         :param path: путь до директории, в которой необходимо проверять вектор
         :type path: pathlib.Path
         :rtype: str
         """
         field_validator = FieldValidator(fields, marker)
+
         print(f"=============== {path.absolute()} ===============")
         for child in path.iterdir():
             if not child.is_file():
@@ -242,8 +256,11 @@ class App:
         """
         if self.verbosity:
             message = f"Working with .csv file at \"{self.path_config.absolute()}\"\n"
-            message += f"Checking presence of corresponding fields files at \"{self.dir.absolute()}\""
+            message += f"Checking presence of corresponding fields files at \"{self.input.absolute()}\" for input vectors"
+            message += f"Checking presence of corresponding fields files at \"{self.output.absolute()}\" for output vectors"
             print_verbose(message)
+
+        in_outs = list()
 
         with open(self.path_config) as file:
             # получение информации о модуле
@@ -254,6 +271,10 @@ class App:
             print_info(str(module_info))
 
             for in_out_fields in self.__get_in_out_fields(buffer_stream):
+                # append необходим в дальнейшем для проверки наличия полей в директории
+                in_outs.append(in_out_fields)
+
+                # информационная часть
                 message = f"#Type - \"{in_out_fields.marker}\"\n"
                 message += f"#Number of bits - {in_out_fields.total_bits}\n"
                 message += f"#Number of bytes - {in_out_fields.total_bytes}\n"
@@ -261,6 +282,25 @@ class App:
                     message += f"#Field - ({None if field.field_name == "" else field.field_name}, {None if field.implementation == "" else field.implementation}, {None if field.dimension == "" else field.dimension})\n"
                 message = message.strip()
                 print_info(message)
+        
+        for in_out_fields in in_outs:
+            message = str() 
+
+            if in_out_fields.marker.lower() == "inputs":
+                message = self.__check_directory(
+                    in_out_fields.fields,
+                    in_out_fields.marker,
+                    self.input
+                )
+            
+            if in_out_fields.marker.lower() == "outputs":
+                message = self.__check_directory(
+                    in_out_fields.fields,
+                    in_out_fields.marker,
+                    self.output
+                )
+
+            print_info(message)
 
         if self.verbosity:
             print_verbose(f"Total rows read - {self.__curr_row_index}")
@@ -269,12 +309,17 @@ class App:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='.csv files format parser')
     parser.add_argument('--config', '-c', type=str, default="OTU4_CONVERTER.csv", help='Path to .csv configuration file')
-    parser.add_argument('--dir', '-d', default='.', type=str, help='Path to directory where vectors are stored')
+    parser.add_argument('--input-directory', '-i', default='.', type=str, help='Path to directory where input vectors are stored')
+    parser.add_argument('--output-directory', '-o', default='.', type=str, help='Path to directory where output vectors are stored')
     parser.add_argument('--verbose', '-v', action='store_true', help='Switch to verbose mode')
+
     args = parser.parse_args()
     
     try:
-        app = App(args.config, args.dir, args.verbose)
+        app = App(args.config, args.input_directory, args.output_directory, args.verbose)
         app.run()
     except ParserException as e:
         print_error(str(e))
+
+
+# -c /tmp/no_errors/PCSTX/otu4_converter/1 -i /tmp/no_errors/PCSTX/otu4_converter -o /tmp/no_errors/PCSTX/otu4_converter/out_

@@ -34,6 +34,15 @@ class Field:
         return result
 
 class FieldValidator:
+    """
+    Класс представляет информацию о полях и файлах, ассоциированных с ними.
+    
+    :ivar fields: массив полей, найденных на этапе поиска входных/выходных векторов.
+    :vartype fields: list[Field]
+
+    :ivar marker: строка, обычно представляющее собой одно из двух возможных значений ("INPUTS" или "OUTPUTS")
+    :vartype marker: str
+    """
     def __init__(self, fields: list, marker: str):
         self.fields_files = dict()
         for field in fields:
@@ -48,13 +57,13 @@ class FieldValidator:
 
         for key, value in self.fields_files.items():
             if not value is None:
-                result.append(f"{self.marker}: {key} - file \"{value}\"")
+                result.append(f"{self.marker}; {key} - file \"{value}\"")
                 with_files += 1
             else:
                 without_files.append(str(key))
             total += 1
 
-        result.append(f"{self.marker}: Number of fields with files - {with_files}; Total number of fields - {total}")
+        result.append(f"{self.marker}; Number of fields with files - {with_files}; Total number of fields - {total}")
         if len(without_files) != 0:
             result.append(f"{self.marker}: Fields without files - {', '.join(without_files)}")
         return "\n".join(result)
@@ -127,7 +136,21 @@ class ModuleInfo:
 
 
 class BufferStream:
+    """
+    Класс потока ввода с буферизацией.
+    
+    :ivar __num_of_cells: кол-во ячеек, которое должно находится в кадой строке.
+    :vartype __num_of_cells: str
 
+    :ivar file: файл, с которым ассоциирован буфер.
+    :vartype file: io.TextIOWrapper
+
+    :ivar last_line: последняя, сохраненная в буфер строка.
+    :vartype last_line: str
+
+    :ivar is_waiting: флаг, определяющий заполненность буфера (True - заполнен, False - пустой).
+    :vartype last_line: bool
+    """
     __num_of_cells = 7
     def __init__(self, file):
         self.file = file
