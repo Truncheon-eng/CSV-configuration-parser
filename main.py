@@ -158,12 +158,17 @@ class App:
                 self.__curr_row_index += 1
 
                 while not self.__is_info(list(row.values())):
-                    if row["__RTL_Signal__"] or row["__Implementation__"] or row["__Dimension__"]:
+                    if  row["__RTL_Signal__"] or \
+                        row["__Implementation__"] or \
+                        row["__Dimension__"] or \
+                        row["__Model_Signal__"]:
+                        
                         field = Field(
-                                row['__RTL_Signal__'],
-                                row['__Implementation__'],
-                                row['__Dimension__']
-                            )
+                            row['__RTL_Signal__'],
+                            row['__Model_Signal__'],
+                            row['__Implementation__'],
+                            row['__Dimension__']
+                        )
                         fields.append(field)
 
                     if (buffer_stream.eof()):
@@ -231,8 +236,9 @@ class App:
                 continue
             file_name = child.stem
             for field in fields:
-                if field.field_name in file_name:
-                    field_validator.fields_files[field.field_name] = child.name
+                exp_file_name = f"{"in" if marker.lower() == 'inputs' else 'out'}_{field.model_signal}"
+                if exp_file_name in file_name:
+                    field_validator.associate_with_file(field, child.name)
 
         return str(field_validator)
     
@@ -256,7 +262,7 @@ class App:
         """
         if self.verbosity:
             message = f"Working with .csv file at \"{self.path_config.absolute()}\"\n"
-            message += f"Checking presence of corresponding fields files at \"{self.input.absolute()}\" for input vectors"
+            message += f"Checking presence of corresponding fields files at \"{self.input.absolute()}\" for input vectors\n"
             message += f"Checking presence of corresponding fields files at \"{self.output.absolute()}\" for output vectors"
             print_verbose(message)
 
@@ -278,14 +284,17 @@ class App:
                 message = f"#Type - \"{in_out_fields.marker}\"\n"
                 message += f"#Number of bits - {in_out_fields.total_bits}\n"
                 message += f"#Number of bytes - {in_out_fields.total_bytes}\n"
+                
                 for field in in_out_fields.fields:
-                    message += f"#Field - ({None if field.field_name == "" else field.field_name}, {None if field.implementation == "" else field.implementation}, {None if field.dimension == "" else field.dimension})\n"
+                    message += f"#Field - {str(field)}\n"
+
                 message = message.strip()
                 print_info(message)
         
         for in_out_fields in in_outs:
             message = str() 
 
+            #TODO: убрать отсюда print
             if in_out_fields.marker.lower() == "inputs":
                 message = self.__check_directory(
                     in_out_fields.fields,

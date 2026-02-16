@@ -1,7 +1,9 @@
 import csv
 from exceptions import ParserException
 from output import print_warning
+from dataclasses import dataclass
 
+@dataclass(frozen=True) # декоратор, который объявляет, что любой инстанс Field - неизменяемый объект
 class Field:
     """
     Класс поля. Пример поля (в .csv файле):
@@ -17,20 +19,20 @@ class Field:
     :ivar __table_fields: Список названий полей соотв. ячеек.
     :vartype __table_fields: list[str]
     """
+    # TODO: поменять описание
     # TODO: по запросу расширить кол-во необходимых полей
-    def __init__(self, field_name, implementation, dimension):
-        self.field_name = field_name
-        self.implementation = implementation
-        # try:
-        self.dimension = dimension
-        # except ValueError:
-            # message = f"Error when getting integer value from __Dimension__: \"{dimension}\""
-            # raise ParserException(message)
-    
+
+    rtl_signal: str
+    model_signal: str
+    implementation: str
+    dimension: str
+
     def __str__(self):
-        result = (f"Field name: {self.field_name}, "
-                  f"Implementation: {'None' if self.implementation == '' else self.implementation}, "
-                  f"Dimension: {self.dimension};")
+        # TODO: при изменение параметров объекта менять метод __str__
+        result = (f"{{.rtl_signal = \"{self.rtl_signal}\", "
+                 f".model_signal = \"{self.model_signal}\", "
+                 f".implementation = \"{self.implementation}\", "
+                 f".dimension = \"{self.dimension}\"}}")
         return result
 
 class FieldValidator:
@@ -43,12 +45,18 @@ class FieldValidator:
     :ivar marker: строка, обычно представляющее собой одно из двух возможных значений ("INPUTS" или "OUTPUTS")
     :vartype marker: str
     """
+    #TODO: поменять описание
     def __init__(self, fields: list, marker: str):
         self.fields_files = dict()
         for field in fields:
-            self.fields_files[field.field_name] = None
+            self.fields_files[field] = None
         self.marker = marker
 
+
+    def associate_with_file(self, field: Field, file_name: str) -> None:
+        self.fields_files[field] = file_name
+        return
+    
     def __str__(self):
         result = list()
         total = 0
@@ -57,10 +65,10 @@ class FieldValidator:
 
         for key, value in self.fields_files.items():
             if not value is None:
-                result.append(f"{self.marker}; {key} - file \"{value}\"")
+                result.append(f"{self.marker}; \"{key.rtl_signal}\" - file \"{value}\"")
                 with_files += 1
             else:
-                without_files.append(str(key))
+                without_files.append(key.rtl_signal)
             total += 1
 
         result.append(f"{self.marker}; Number of fields with files - {with_files}; Total number of fields - {total}")
