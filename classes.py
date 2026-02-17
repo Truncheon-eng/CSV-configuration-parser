@@ -25,14 +25,16 @@ class Field:
     rtl_signal: str
     model_signal: str
     implementation: str
+    type__: str
     dimension: str
 
     def __str__(self):
         # TODO: при изменение параметров объекта менять метод __str__
-        result = (f"{{.rtl_signal = \"{self.rtl_signal}\", "
-                 f".model_signal = \"{self.model_signal}\", "
-                 f".implementation = \"{self.implementation}\", "
-                 f".dimension = \"{self.dimension}\"}}")
+        result = (f"{{\n\t.rtl_signal = \"{self.rtl_signal}\",\n"
+                 f"\t.model_signal = \"{self.model_signal}\",\n"
+                 f"\t.type = \"{self.type__}\"\n"
+                 f"\t.implementation = \"{self.implementation}\",\n"
+                 f"\t.dimension = \"{self.dimension}\"\n}}")
         return result
 
 class FieldValidator:
@@ -159,7 +161,7 @@ class BufferStream:
     :ivar is_waiting: флаг, определяющий заполненность буфера (True - заполнен, False - пустой).
     :vartype last_line: bool
     """
-    __num_of_cells = 7
+    __num_of_cells = 8
     def __init__(self, file):
         self.file = file
         self.last_line = None

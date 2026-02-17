@@ -34,6 +34,7 @@ class App:
         "__Dimension__",
         "__TV_Offset__",
         "__Bit_Position__",
+        "__Type__",
         "__RTL_Signal__",
         "__Model_Signal__",
         "__Doc_Signal__"
@@ -167,6 +168,7 @@ class App:
                             row['__RTL_Signal__'],
                             row['__Model_Signal__'],
                             row['__Implementation__'],
+                            row['__Type__'],
                             row['__Dimension__']
                         )
                         fields.append(field)
