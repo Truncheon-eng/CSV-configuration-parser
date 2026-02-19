@@ -5,8 +5,12 @@ import argparse
 from output import print_error, print_verbose, print_warning, print_info
 from exceptions import ParserException
 from classes import Field, FieldValidator, BufferStream, ModuleInfo, InOutFields
+from collector import Collector
 
-class App:
+from datetime import datetime
+
+
+class Parser:
     #TODO: поменять документацию в соотв. с новыми добавленными полями
     """
     Класс приложения-парсера, необходимый для запуска самого парсера.
@@ -78,7 +82,7 @@ class App:
         """
         Метод __read_header предназначен для парсинга заголовка .csv конф. файла
         
-        :param self: объект класса App
+        :param self: объект класса Parser
         :param buffer_stream: поток ввода с буферизацией
         :type buffer_stream: BufferStream
         :return: объект ModuleInfo, содержащий информацию о заголовке .csv файла
@@ -123,7 +127,7 @@ class App:
         """
         Метод-генератор __get_in_out_fields предназначен для получения объектов типа InOutFields 
         
-        :param self: объект класса App 
+        :param self: объект класса Parser 
         :param buffer_stream: поток ввода с буферизацией
         :type buffer_stream: BufferStream
         """
@@ -164,13 +168,32 @@ class App:
                         row["__Dimension__"] or \
                         row["__Model_Signal__"]:
                         
+                        simulating = True
+
+                        if row['__Type__'] == 'S':
+                            simulating = True
+                        elif row['__Type__'] == 'R':
+                            simulating = False
+                        else:
+                            message = f"#Field - {row['__RTL_Signal__']}; __Type__ should be S or R"
+                            raise ParserException(message)
+
+                        dimension = 0
+
+                        try:
+                            dimension = int(row['__Dimension__'])
+                        except (ValueError, TypeError):
+                            message = f"#Field - {row['__RTL_Signal__']}; __Dimension__ \"{row['__Dimension__']}\" must be an integer"
+                            raise ParserException(message)
+                        
                         field = Field(
                             row['__RTL_Signal__'],
                             row['__Model_Signal__'],
                             row['__Implementation__'],
-                            row['__Type__'],
-                            row['__Dimension__']
+                            simulating,
+                            dimension
                         )
+
                         fields.append(field)
 
                     if (buffer_stream.eof()):
@@ -216,12 +239,12 @@ class App:
     
         return True
 
-    def __check_directory(self, fields: list[Field], marker: str, path: pathlib.Path) -> str:
+    def __check_directory(self, fields: list[Field], marker: str, path: pathlib.Path) -> FieldValidator:
         """
         Метод __check_directory предназначен для проверки директорий на наличие файлов с
         похожими именами из fields
 
-        :param self: объект класса App
+        :param self: объект класса Parser
         :param fields: список полей
         :type fields: list[Field]
         :param marker: строка маркер ("INPUTS" или "OUTPUTS")
@@ -233,34 +256,36 @@ class App:
         field_validator = FieldValidator(fields, marker)
 
         print(f"=============== {path.absolute()} ===============")
-        for child in path.iterdir():
-            if not child.is_file():
-                continue
-            file_name = child.stem
-            for field in fields:
+        for field in fields:
+            for child in path.iterdir():
+                if not child.is_file():
+                    continue
+            
+                file_name = child.stem
                 exp_file_name = f"{"in" if marker.lower() == 'inputs' else 'out'}_{field.model_signal}"
-                if exp_file_name in file_name:
-                    field_validator.associate_with_file(field, child.name)
 
-        return str(field_validator)
+                if exp_file_name in file_name:
+                    field_validator.associate_with_file(field, child)
+
+        return field_validator
     
     def get_curr_row_index(self):
         """
         Геттeр get_curr_row_index для получения значения закрытого поля __curr_row_index
 
-        :param self: объект класса App
+        :param self: объект класса Parser
         :rtype: int
         """
         return self.__curr_row_index
 
-    def run(self):
+    def run(self) -> list[dict[Field, pathlib.Path]]:
         """
         Основной метод, который запускает парсер.
         Состоит из нескольких этапов:
             1. Считывание заголовка (ModuleInfo)
             2. Перебор функции-генератор и получение объектов типа InOutFields
             3. Вывод дополнительной информации
-        :param self: объект класса App
+        :param self: объект класса Parser
         """
         if self.verbosity:
             message = f"Working with .csv file at \"{self.path_config.absolute()}\"\n"
@@ -269,6 +294,7 @@ class App:
             print_verbose(message)
 
         in_outs = list()
+        result = list()
 
         with open(self.path_config) as file:
             # получение информации о модуле
@@ -294,28 +320,30 @@ class App:
                 print_info(message)
         
         for in_out_fields in in_outs:
-            message = str() 
+            fv = None 
 
             #TODO: убрать отсюда print
             if in_out_fields.marker.lower() == "inputs":
-                message = self.__check_directory(
+                fv = self.__check_directory(
                     in_out_fields.fields,
                     in_out_fields.marker,
                     self.input
                 )
             
             if in_out_fields.marker.lower() == "outputs":
-                message = self.__check_directory(
+                fv = self.__check_directory(
                     in_out_fields.fields,
                     in_out_fields.marker,
                     self.output
                 )
 
-            print_info(message)
+            print_info(str(fv))
+            result.append(fv.fields_files)
 
         if self.verbosity:
             print_verbose(f"Total rows read - {self.__curr_row_index}")
-        return
+        
+        return result
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='.csv files format parser')
@@ -323,14 +351,22 @@ if __name__ == "__main__":
     parser.add_argument('--input-directory', '-i', default='.', type=str, help='Path to directory where input vectors are stored')
     parser.add_argument('--output-directory', '-o', default='.', type=str, help='Path to directory where output vectors are stored')
     parser.add_argument('--verbose', '-v', action='store_true', help='Switch to verbose mode')
-
+    parser. add_argument('--store', '-s', default='.', type=str, help='Path to directory where *.(dat|tv) files')
     args = parser.parse_args()
     
     try:
-        app = App(args.config, args.input_directory, args.output_directory, args.verbose)
-        app.run()
+        start = datetime.now()
+
+        parser = Parser(args.config, args.input_directory, args.output_directory, args.verbose)
+        parser_results = parser.run()
+
+        collector = Collector(args.store)
+        
+        for result in parser_results:
+            collector.collect(result)
+        
+        end = datetime.now()
+        print(f"Total time - {end - start}")
+    
     except ParserException as e:
         print_error(str(e))
-
-
-# -c /tmp/no_errors/PCSTX/otu4_converter/1 -i /tmp/no_errors/PCSTX/otu4_converter -o /tmp/no_errors/PCSTX/otu4_converter/out_

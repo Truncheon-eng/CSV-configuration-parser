@@ -2,6 +2,7 @@ import csv
 from exceptions import ParserException
 from output import print_warning
 from dataclasses import dataclass
+import pathlib
 
 @dataclass(frozen=True) # декоратор, который объявляет, что любой инстанс Field - неизменяемый объект
 class Field:
@@ -25,14 +26,14 @@ class Field:
     rtl_signal: str
     model_signal: str
     implementation: str
-    type__: str
-    dimension: str
+    simulating: bool
+    dimension: int
 
     def __str__(self):
         # TODO: при изменение параметров объекта менять метод __str__
         result = (f"{{\n\t.rtl_signal = \"{self.rtl_signal}\",\n"
                  f"\t.model_signal = \"{self.model_signal}\",\n"
-                 f"\t.type = \"{self.type__}\"\n"
+                 f"\t.simulating = \"{self.simulating}\"\n"
                  f"\t.implementation = \"{self.implementation}\",\n"
                  f"\t.dimension = \"{self.dimension}\"\n}}")
         return result
@@ -49,33 +50,33 @@ class FieldValidator:
     """
     #TODO: поменять описание
     def __init__(self, fields: list, marker: str):
+        self.total_fields = len(fields)
+        self.num_with_files = 0
+        self.rtls_without_files = set([field.rtl_signal for field in fields])
         self.fields_files = dict()
-        for field in fields:
-            self.fields_files[field] = None
         self.marker = marker
 
 
-    def associate_with_file(self, field: Field, file_name: str) -> None:
+    def associate_with_file(self, field: Field, file_name: pathlib.Path) -> None:
         self.fields_files[field] = file_name
+        # TODO: проблема заключается в том, что одному файлу могут соотв. сразу несколько
+        # TODO: всё-таки нужно использовать remove
+        self.rtls_without_files.discard(field.rtl_signal)
         return
     
     def __str__(self):
         result = list()
-        total = 0
-        with_files = 0
-        without_files = list()
 
         for key, value in self.fields_files.items():
-            if not value is None:
-                result.append(f"{self.marker}; \"{key.rtl_signal}\" - file \"{value}\"")
-                with_files += 1
-            else:
-                without_files.append(key.rtl_signal)
-            total += 1
+            result.append(f"{self.marker}; \"{key.rtl_signal}\" - file \"{value.name}\"")
+            self.num_with_files += 1
 
-        result.append(f"{self.marker}; Number of fields with files - {with_files}; Total number of fields - {total}")
-        if len(without_files) != 0:
-            result.append(f"{self.marker}; Fields without files - {', '.join(without_files)}")
+        result.append(f"{self.marker}; "
+                      f"Number of fields with files - {self.num_with_files}; "
+                      f"Total number of fields - {self.total_fields}")
+        if len(self.rtls_without_files) != 0:
+            result.append(f"{self.marker}; Fields without files - {', '.join(self.rtls_without_files)}")
+        
         return "\n".join(result)
 
 
