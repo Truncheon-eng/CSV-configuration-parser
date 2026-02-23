@@ -1,9 +1,10 @@
 import csv
 import pathlib
 import argparse
+import re
 
 from output import print_error, print_verbose, print_warning, print_info
-from exceptions import ParserException
+from exceptions import ParserException, CollectorException
 from classes import Field, FieldValidator, BufferStream, ModuleInfo, InOutFields
 from collector import Collector
 
@@ -101,14 +102,14 @@ class Parser:
                 module = row[1]
             else:
                 message = f"Error at {self.__curr_row_index} row in a table\n"
-                message += f"\"{row[0]}\" doesn't contain \"module\" substring"
+                message += f"\"{row[0]:.30s}\" doesn't contain \"module\" substring"
                 raise ParserException(message)
             
             if "module" in row[2].lower() and "id" in row[2].lower():
                 module_id = row[3]
             else:
                 message = f"Warning at {self.__curr_row_index} row in a table\n"
-                message += f"\"{row[2]}\" doesn't contain \"module\" and \"id\" susbstrings"
+                message += f"\"{row[2]:.30s}\" doesn't contain \"module\" and \"id\" susbstrings"
                 print_warning(message)
             
             module_info = ModuleInfo(
@@ -141,7 +142,7 @@ class Parser:
 
                 if not self.__is_info(row):
                     delim = csv_reader.dialect.delimiter
-                    message = f"\"{delim.join(row)}\" doesn't fit \"^(IN|OUT)PUTS,Total_Bits_(In|Out),\\d+,Total_Bytes_(In|Out),\\d+,,$\" regex!"
+                    message = f"\"{delim.join(row):.30s}\" doesn't fit \"^(IN|OUT)PUTS,Total_Bits_(In|Out),\\d+,Total_Bytes_(In|Out),\\d+,,$\" regex!"
                     raise ParserException(message)
                 
                 marker = row[0]
@@ -153,8 +154,8 @@ class Parser:
 
                 if row != self.__table_fields:
                     delim = csv_reader.dialect.delimiter
-                    message = f"Expected: \"{delim.join(self.__table_fields)}\"\n"
-                    message += f"Got: \"{delim.join(row)}\""
+                    message = f"Expected: \"{delim.join(self.__table_fields):.30s}\"\n"
+                    message += f"Got: \"{delim.join(row):.30s}\""
                     raise ParserException(message)
 
                 dict_reader = csv.DictReader(buffer_stream, fieldnames=self.__table_fields)
@@ -256,16 +257,27 @@ class Parser:
         field_validator = FieldValidator(fields, marker)
 
         print(f"=============== {path.absolute()} ===============")
+
         for field in fields:
+            
+            pattern_string = rf"{"in" if marker.lower() == 'inputs' else 'out'}_{field.model_signal}(\[\d+\]|\(\d+u\))\.dat"
+            pattern = re.compile(pattern_string) # compiled regex for searching important files
+
             for child in path.iterdir():
                 if not child.is_file():
                     continue
             
-                file_name = child.stem
-                exp_file_name = f"{"in" if marker.lower() == 'inputs' else 'out'}_{field.model_signal}"
+                file_name = child.name
+                # exp_file_name = f"{"in" if marker.lower() == 'inputs' else 'out'}_{field.model_signal}"
 
-                if exp_file_name in file_name:
+                # if exp_file_name in file_name:
+                #     field_validator.associate_with_file(field, child)
+                if re.search(pattern, file_name):
                     field_validator.associate_with_file(field, child)
+            
+            if not field_validator.check_field(field):
+                message = f"There is not file in \"{path}\" which is associated with \"{field.rtl_signal}\""
+                print_warning(message)
 
         return field_validator
     
@@ -346,7 +358,7 @@ class Parser:
         return result
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='.csv files format parser')
+    parser = argparse.ArgumentParser(description='.csv files format parser and handler')
     parser.add_argument('--config', '-c', type=str, default="OTU4_CONVERTER.csv", help='Path to .csv configuration file')
     parser.add_argument('--input-directory', '-i', default='.', type=str, help='Path to directory where input vectors are stored')
     parser.add_argument('--output-directory', '-o', default='.', type=str, help='Path to directory where output vectors are stored')
@@ -363,10 +375,13 @@ if __name__ == "__main__":
         collector = Collector(args.store)
         
         for result in parser_results:
-            collector.collect(result)
-        
+            store_file = collector.collect(result)
+            if args.verbose:
+                message = f"Vectores are stored at \"{store_file.absolute()}\""
+                print_verbose(message)        
+
         end = datetime.now()
         print(f"Total time - {end - start}")
     
-    except ParserException as e:
+    except (ParserException, CollectorException) as e:
         print_error(str(e))

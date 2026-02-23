@@ -58,11 +58,18 @@ class FieldValidator:
 
 
     def associate_with_file(self, field: Field, file_name: pathlib.Path) -> None:
-        self.fields_files[field] = file_name
-        # TODO: проблема заключается в том, что одному файлу могут соотв. сразу несколько
-        # TODO: всё-таки нужно использовать remove
-        self.rtls_without_files.discard(field.rtl_signal)
+        if not field in self.fields_files:
+            self.fields_files[field] = file_name
+            self.rtls_without_files.discard(field.rtl_signal)
+        else:
+            message = (f"Except file \"{self.fields_files[field].name}\" "
+                f"field \"{field.rtl_signal}\" also matches the file \"{file_name.name}\"")
+            print_warning(message)
         return
+
+
+    def check_field(self, field: Field) -> bool:
+        return field in self.fields_files
     
     def __str__(self):
         result = list()
