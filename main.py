@@ -195,7 +195,16 @@ class Parser:
                             dimension
                         )
 
-                        fields.append(field)
+                        if field.simulating:
+                            fields.append(field)
+                        else:
+                            message = (
+                                f"#Field - {str(field)}\n"
+                                f"\"{field.rtl_signal}\" seems to be non-simulating, therefore skip this field"        
+                            )
+                            print_info(message)
+
+
 
                     if (buffer_stream.eof()):
                         break
