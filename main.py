@@ -371,7 +371,7 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', '-v', action='store_true', help='Switch to verbose mode')
     parser.add_argument('--store', '-s', default='.', type=str, help='Path to directory where *.(dat|tv) files')
     parser.add_argument('--dump-size', '-d', default=1024, type=int, help=(
-        f'Number of bits to be read', 
+        f'Number of bits to be read '
         f'in order to identify number system ({Collector.bottom_dump_size} <= dump_size <= {Collector.top_dump_size})'
     ))
     args = parser.parse_args()

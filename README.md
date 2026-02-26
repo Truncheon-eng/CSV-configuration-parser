@@ -1,7 +1,7 @@
 # CSV-configuration-parser
 ```shell
 python3 main.py -h                                                           
-usage: main.py [-h] [--config CONFIG] [--input-directory INPUT_DIRECTORY] [--output-directory OUTPUT_DIRECTORY] [--verbose] [--store STORE]
+usage: main.py [-h] [--config CONFIG] [--input-directory INPUT_DIRECTORY] [--output-directory OUTPUT_DIRECTORY] [--verbose] [--store STORE] [--dump-size DUMP_SIZE]
 
 .csv files format parser and handler
 
@@ -16,6 +16,8 @@ options:
   --verbose, -v         Switch to verbose mode
   --store STORE, -s STORE
                         Path to directory where *.(dat|tv) files
+  --dump-size DUMP_SIZE, -d DUMP_SIZE
+                        Number of bits to be read in order to identify number system (1024 <= dump_size <= 8192)
 ```
 `--config` - путь до .csv файла с расписанной конфигурацией определенных структур (например `OTU4_CONVERTER.csv`).
 
@@ -27,6 +29,8 @@ options:
 
 `--store` - директория, в которой необходимо сохранить единые тестовые вектора
 
+`--dump-size` - кол-во символов, которое необходимо считать, чтобы определить систему счисления использованную в файле
+
 Пример вызвова:
 ```shell
 python3 main.py \
@@ -34,6 +38,7 @@ python3 main.py \
   \ -i "/home/truncheon/no_errors/PCSTX/descrambler/" 
   \ -o "/home/truncheon/no_errors/PCSTX/descrambler/" 
   \ -s "./vectors" 
+  \ --dump-size=2048
   \ -v
 
 [v]: Working with .csv file at "/home/truncheon/omo_testchamber/DOCs/Test Vectors/FRAMER_PCS_TX/DESCRAMBLER.csv"
@@ -45,8 +50,17 @@ python3 main.py \
 
 [!]: "" value can't be interpreted as integer, when reading ModuleInfo
 
-[i]: Module: DESCRAMBLER
-[i]: Module ID: None
+[v]: Module: DESCRAMBLER
+[v]: Module ID: None
+
+[i]: #Field - {
+[i]:    .rtl_signal = "AIS_EN_IN",
+[i]:    .model_signal = "AIS_EN_IN",
+[i]:    .simulating = "False"
+[i]:    .implementation = "",
+[i]:    .dimension = "1"
+[i]: }
+[i]: "AIS_EN_IN" seems to be non-simulating, therefore skip this field
 
 [i]: #Type - "INPUTS"
 [i]: #Number of bits - 136
@@ -76,13 +90,6 @@ python3 main.py \
 [i]:    .rtl_signal = "nHARD_RESET",
 [i]:    .model_signal = "nHARD_RESET",
 [i]:    .simulating = "True"
-[i]:    .implementation = "",
-[i]:    .dimension = "1"
-[i]: }
-[i]: #Field - {
-[i]:    .rtl_signal = "AIS_EN_IN",
-[i]:    .model_signal = "AIS_EN_IN",
-[i]:    .simulating = "False"
 [i]:    .implementation = "",
 [i]:    .dimension = "1"
 [i]: }
@@ -117,8 +124,7 @@ python3 main.py \
 [i]: INPUTS; "DATA_VALID" - file "in_DATA_VALID_IN(1u).dat"
 [i]: INPUTS; "FRAME_BEGIN" - file "in_FRAME_BEGIN_IN(1u).dat"
 [i]: INPUTS; "nHARD_RESET" - file "in_nHARD_RESET(1u).dat"
-[i]: INPUTS; "AIS_EN_IN" - file "in_AIS_EN_IN(1u).dat"
-[i]: INPUTS; Number of fields with files - 5; Total number of fields - 5
+[i]: INPUTS; Number of fields with files - 4; Total number of fields - 4
 
 =============== /home/truncheon/no_errors/PCSTX/descrambler ===============
 [i]: OUTPUTS; "DATA_OUT" - file "out_DATA_OUT(1u).dat"
@@ -128,9 +134,24 @@ python3 main.py \
 
 [v]: Total rows read - 14
 
+[v]: "in_DATA_IN(1u).dat" seems to be BINARY
+
+[v]: "in_DATA_VALID_IN(1u).dat" seems to be BINARY
+
+[v]: "in_FRAME_BEGIN_IN(1u).dat" seems to be BINARY
+
+[v]: "in_nHARD_RESET(1u).dat" seems to be BINARY
+
 [v]: Vectores are stored at "/home/truncheon/CSV-configuration-parser/vectors/vectors_0.tv"
+
+[v]: "out_DATA_OUT(1u).dat" seems to be BINARY
+
+[v]: "out_DATA_VALID_OUT(1u).dat" seems to be BINARY
+
+[v]: "out_FRAME_BEGIN_OUT(1u).dat" seems to be BINARY
 
 [v]: Vectores are stored at "/home/truncheon/CSV-configuration-parser/vectors/vectors_1.tv"
 
-Total time - 0:00:28.812744
+Total time - 0:00:23.908457
+
 ```
