@@ -17,8 +17,21 @@ class Field:
         - "DATA_IN" - значение __Model_Signal__
         - "DATA_IN" - значение __Doc_Signal__
     
-    :ivar __table_fields: Список названий полей соотв. ячеек.
-    :vartype __table_fields: list[str]
+    :ivar rtl_signal: содержимое ячейки столбца "__RTL_Signal__".
+    :vartype rtl_signal: str
+
+    :ivar model_signal: содержимое ячейки столбца "__Model_Signal__".
+    :vartype model_signal: str
+
+    :ivar implementation: содержимое ячейки столбца "implementation".    
+    :vartype implementation: int
+
+    :ivar simulating: идентификатор, показывающий является ли поле симулируемым или же регистровым.    
+    :vartype simulating: bool
+
+    :ivar dimension: кол-во бит, занимамемых данным полем в тестовых векторах.    
+    :vartype dimension: int
+
     """
     # TODO: поменять описание
     # TODO: по запросу расширить кол-во необходимых полей
@@ -41,14 +54,22 @@ class Field:
 class FieldValidator:
     """
     Класс представляет информацию о полях и файлах, ассоциированных с ними.
-    
-    :ivar fields: массив полей, найденных на этапе поиска входных/выходных векторов.
-    :vartype fields: list[Field]
 
-    :ivar marker: строка, обычно представляющее собой одно из двух возможных значений ("INPUTS" или "OUTPUTS")
+    :ivar total_fields: общее кол-во всех полей.
+    :vartype total_fields: int 
+
+    :ivar num_with_files: кол-во полей, ассоциированных с файлыми тестовых векторов.
+    :vartype num_with_files: int
+    
+    :ivar rtls_without_files: множество файлов, неассоциированных с какими-либо файлами.
+    :vartype rtls_without_files: set
+
+    :ivar fields_files: словарь полей и файлов путей до файлов, ассоциируемых с ними.
+    :vartype fields_files: dict[field, pathlib.Path]
+
+    :ivar marker:  маркер типа полей ("INPUTS/OUTPUTS")
     :vartype marker: str
     """
-    #TODO: поменять описание
     def __init__(self, fields: list, marker: str):
         self.total_fields = len(fields)
         self.num_with_files = 0
@@ -58,6 +79,20 @@ class FieldValidator:
 
 
     def associate_with_file(self, field: Field, file_name: pathlib.Path) -> None:
+        """
+        Метод associate_with_file предназначен для взаимодействия с полем self.fields_files.
+        Public интерфейс для ассоциации файла с полем
+        
+        :param self: объект класса Collector
+        
+        :param field: поле, которое необходимо ассоциировать с файлом
+        :type field: Field 
+        
+        :param file_name: путь до файла с тестовыми векторами
+        :type file_name: path.Pathlib
+        
+        :rtype: None
+        """
         if not field in self.fields_files:
             self.fields_files[field] = file_name
             self.rtls_without_files.discard(field.rtl_signal)
@@ -69,6 +104,14 @@ class FieldValidator:
 
 
     def check_field(self, field: Field) -> bool:
+        """
+        Метод check_field проверяет, есть ли для поля файл, ассоциированный с ним
+        
+        :param field: поле, для которого необходимо сделать проверку
+        :type field: Field
+        
+        :rtype: bool
+        """
         return field in self.fields_files
     
     def __str__(self):
@@ -92,13 +135,13 @@ class InOutFields:
     Класс множества полей определенной структуры (либо Inputs, либо Outputs)
     
     :ivar marker: тип векторов (само значение берется из первой ячейки строчек типа: "INPUTS,Total_Bits_In,136,Total_Bytes_In,17,,").
-    :vartype __table_fields: str
+    :vartype marker: int
 
     :ivar total_bits: общее кол-во битов (входных / выходных)
     :vartype total_bits: int
 
     :ivar total_bytes: общее кол-во байтов (входных / выходных)
-    :vartype total_bits: int
+    :vartype total_bytes: int
 
     :ivar fields: поля, записанные в .csv файле (входные / выходные)
     :vartype fields: list[Field]
@@ -127,7 +170,8 @@ class InOutFields:
         
 class ModuleInfo:
     """
-    Класс метаинформации модуля, содержит в себе информацию о модуле, ID модуля.
+    Класс метаинформации модуля.
+    Содержит в себе информацию о модуле, ID модуля.
     
     :ivar module: название модуля.
     :vartype module: str

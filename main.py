@@ -12,7 +12,6 @@ from datetime import datetime
 
 
 class Parser:
-    #TODO: поменять документацию в соотв. с новыми добавленными полями
     """
     Класс приложения-парсера, необходимый для запуска самого парсера.
     
@@ -231,7 +230,8 @@ class Parser:
     def __is_info(row: list[str]) -> bool:
         """
         Статиеский метод __is_info предназначен для определения того факта, 
-        явялется ли очередная считанная строка "информационной"
+        явялется ли очередная считанная строка "информационной"(строка .csv файла, описывающая тип полей "INPUTS/OUTPUTS",
+        суммарную размерность входных данных в битах, суммарную размерность в байтах)
         
         :param row: список ячеек, считанной строки
         :type row: list[str]
@@ -261,7 +261,7 @@ class Parser:
         :type marker: str
         :param path: путь до директории, в которой необходимо проверять вектор
         :type path: pathlib.Path
-        :rtype: str
+        :rtype: FieldValidator
         """
         field_validator = FieldValidator(fields, marker)
 
@@ -277,10 +277,7 @@ class Parser:
                     continue
             
                 file_name = child.name
-                # exp_file_name = f"{"in" if marker.lower() == 'inputs' else 'out'}_{field.model_signal}"
 
-                # if exp_file_name in file_name:
-                #     field_validator.associate_with_file(field, child)
                 if re.search(pattern, file_name):
                     field_validator.associate_with_file(field, child)
             
@@ -290,7 +287,7 @@ class Parser:
 
         return field_validator
     
-    def get_curr_row_index(self):
+    def get_curr_row_index(self) -> int:
         """
         Геттeр get_curr_row_index для получения значения закрытого поля __curr_row_index
 
@@ -307,6 +304,7 @@ class Parser:
             2. Перебор функции-генератор и получение объектов типа InOutFields
             3. Вывод дополнительной информации
         :param self: объект класса Parser
+        :rtype: list[dict[Field, pathlib.Path]]
         """
         if self.verbosity:
             message = f"Working with .csv file at \"{self.path_config.absolute()}\"\n"
@@ -322,14 +320,14 @@ class Parser:
             buffer_stream = BufferStream(file)
             module_info = self.__read_header(buffer_stream)
             
-            # TODO: подумать о выводе информации только в случае self.__verbosity
-            print_info(str(module_info))
+            if self.verbosity:
+                print_verbose(str(module_info))
 
             for in_out_fields in self.__get_in_out_fields(buffer_stream):
                 # append необходим в дальнейшем для проверки наличия полей в директории
                 in_outs.append(in_out_fields)
 
-                # информационная часть
+                # "информационная" часть
                 message = f"#Type - \"{in_out_fields.marker}\"\n"
                 message += f"#Number of bits - {in_out_fields.total_bits}\n"
                 message += f"#Number of bytes - {in_out_fields.total_bytes}\n"
@@ -343,7 +341,6 @@ class Parser:
         for in_out_fields in in_outs:
             fv = None 
 
-            #TODO: убрать отсюда print
             if in_out_fields.marker.lower() == "inputs":
                 fv = self.__check_directory(
                     in_out_fields.fields,
@@ -372,7 +369,11 @@ if __name__ == "__main__":
     parser.add_argument('--input-directory', '-i', default='.', type=str, help='Path to directory where input vectors are stored')
     parser.add_argument('--output-directory', '-o', default='.', type=str, help='Path to directory where output vectors are stored')
     parser.add_argument('--verbose', '-v', action='store_true', help='Switch to verbose mode')
-    parser. add_argument('--store', '-s', default='.', type=str, help='Path to directory where *.(dat|tv) files')
+    parser.add_argument('--store', '-s', default='.', type=str, help='Path to directory where *.(dat|tv) files')
+    parser.add_argument('--dump-size', '-d', default=1024, type=int, help=(
+        f'Number of bits to be read', 
+        f'in order to identify number system ({Collector.bottom_dump_size} <= dump_size <= {Collector.top_dump_size})'
+    ))
     args = parser.parse_args()
     
     try:
@@ -381,13 +382,13 @@ if __name__ == "__main__":
         parser = Parser(args.config, args.input_directory, args.output_directory, args.verbose)
         parser_results = parser.run()
 
-        collector = Collector(args.store)
+        collector = Collector(args.store, args.verbose, args.dump_size)
         
         for result in parser_results:
             store_file = collector.collect(result)
             if args.verbose:
                 message = f"Vectores are stored at \"{store_file.absolute()}\""
-                print_verbose(message)        
+                print_verbose(message)       
 
         end = datetime.now()
         print(f"Total time - {end - start}")
