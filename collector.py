@@ -6,7 +6,7 @@ from exceptions import CollectorException
 from contextlib import ExitStack
 from classes import Field
 from enum import Enum
-from output import print_verbose
+from output import print_verbose, print_info
 
 class NumberSystem(Enum):
     BIN = 0
@@ -101,11 +101,18 @@ class Collector:
 
             raise CollectorException(message)
         
-        if (bit_len % BIN_TO_HEX_LEN != 0):
-            message = (f"Error at {line_num} string in \"{file_name.absolute()}\"."
-                       f" Number of expected bits ({bit_len}) at string is not divisible by {BIN_TO_HEX_LEN}\n"
-                       f"String - \"{line.strip():.30s}\"")
-            raise CollectorException(message)
+        # if (bit_len % BIN_TO_HEX_LEN != 0):
+        #     message = (f"Error at {line_num} string in \"{file_name.absolute()}\"."
+        #                f" Number of expected bits ({bit_len}) at string is not divisible by {BIN_TO_HEX_LEN}\n"
+        #                f"String - \"{line.strip():.30s}\"")
+        #     raise CollectorException(message)
+
+        rounded_length = bit_len + (BIN_TO_HEX_LEN - bit_len % BIN_TO_HEX_LEN)
+
+        if (rounded_length != bit_len):
+            # print_info(f"{bit_len} isn't divisible by {BIN_TO_HEX_LEN}")
+            # print_info(f"interacting with {rounded_length}")
+            line_arr = ["0"] * (rounded_length - bit_len) + line_arr
 
         result = list()
         

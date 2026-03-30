@@ -1,4 +1,5 @@
 __pycache__
+*.tv
 *.csv
 OTU4_CONVERTER.csv*
 check.py
@@ -6,3 +7,5 @@ check.py
 test.py
 test_values.txt
 vectors
+FEC_TX_IN.hex
+FEC_TX_OUT.hex
