@@ -1,7 +1,4 @@
 __pycache__
-*.tv
-*.csv
-OTU4_CONVERTER.csv*
 check.py
 .vscode
 test.py

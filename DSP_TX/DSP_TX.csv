@@ -1,0 +1,12 @@
+__Module__,OTU4_CONVERTER,__Module_ID__,,,__Sybsystems__,FRAMER_PCS_TX,
+INPUTS,Total_Bits_In,114,Total_Bytes_In,15,,,
+__Implementation__,__Dimension__,__TV_Offset__,__Bit_Position__,__Type__,__RTL_Signal__,__Model_Signal__,__Doc_Signal__
+[110:0],111,0x00,-,S,DATA_IN,OTUC1_P_FRAMER_IN,
+,1,,,S,VALID_IN,DATA_VALID_TEST_LOOP_IN,
+,1,,,S,SOF_IN,FEC_SOF_FRAMER_IN,
+,1,,,S,RST,RSTn,
+OUTPUTS,Total_Bits_Out,130,Total_Bytes_Out,17,,,
+__Implementation__,__Dimension__,__TV_Offset__,__Bit_Position__,__Type__,__RTL_Signal__,__Model_Signal__,__Doc_Signal__
+[127:0],128,0x00,-,S,DATA_OUT,DATA_TEST_LOOP_OUT,
+,1,,,S,VALID_OUT ,DATA_VALID_TEST_LOOP_OUT,
+,1,,,S,SOF_OUT,SOF_TEST_LOOP_OUT,
