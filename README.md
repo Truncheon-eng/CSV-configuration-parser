@@ -1,112 +1,183 @@
 # CSV-configuration-parser
-```shell
-python3 main.py -h 
-usage: main.py [-h] [--config CONFIG] [--input-directory INPUT_DIRECTORY] [--output-directory OUTPUT_DIRECTORY] [--verbose]
 
-.csv files format parser
+Ветка: `universal_parser`. Состояние: `41a0dcc`.
 
-options:
-  -h, --help            show this help message and exit
-  --config CONFIG, -c CONFIG
-                        Path to .csv configuration file
-  --input-directory INPUT_DIRECTORY, -i INPUT_DIRECTORY
-                        Path to directory where input vectors are stored
-  --output-directory OUTPUT_DIRECTORY, -o OUTPUT_DIRECTORY
-                        Path to directory where output vectors are stored
-  --verbose, -v         Switch to verbose mode
+## Назначение и изменения относительно main
+
+Ветка развивает чтение конфигурации и поиск файлов тестовых векторов. Входной и выходной каталоги задаются независимо. Добавлены объекты `ModuleInfo`, `InOutFields` и `BufferStream`, чтение секций по информационным строкам, колонка `__Type__` и поиск по имени сигнала математической модели.
+
+Результат работы – описание модуля и отчёт о соответствии сигналов файлам. Конвертация содержимого и запись объединённых векторов появляются в `parser_with_collector`.
+
+## Запуск
+
+Для кода этой ветки нужен >= Python 3.12. Сторонние Python-пакеты не требуются.
+
+```sh
+python3 main.py -h
+python3 main.py -c "OTU4_CONVERTER.csv" -i "no_errors/PCSTX/otu4_converter" -o "no_errors/PCSTX/otu4_converter/out_" -v
 ```
-`--config` - путь до .csv файла с расписанной конфигурацией определенных структур (например `OTU4_CONVERTER.csv`).
 
-`--input-directory` - путь до директории, в которой сохранены входные вектора (INPUTS).
+| Параметр | Назначение | По умолчанию |
+| --- | --- | --- |
+| `--config`, `-c` | Конфигурация CSV | `OTU4_CONVERTER.csv` |
+| `--input-directory`, `-i` | Входные файлы | `.` |
+| `--output-directory`, `-o` | Выходные файлы | `.` |
+| `--verbose`, `-v` | Дополнительный вывод | Выключен |
 
-`--output-directory` - путь до директории, в которой сохранены выходные вектора (OUTPUTS).
+Команда и описание аргументов основаны на исходном README; исправлено оформление переноса строк.
 
-`-v` - вывод дополнительной информации. Например, полный путь до директорий, в которых хранятся входные/выходные вектора.
+## Формат CSV
 
-Пример вызвова:
+Конфигурация содержит заголовок модуля и секции `INPUTS` / `OUTPUTS` с общим количеством бит и байт. Для определения информационной строки проверяются слова inputs/outputs, bits и bytes в соответствующих ячейках.
+
+Порядок колонок:
+
+```csv
+__Implementation__,__Dimension__,__TV_Offset__,__Bit_Position__,__Type__,__RTL_Signal__,__Model_Signal__,__Doc_Signal__
+```
+
+`BufferStream` позволяет вернуть последнюю прочитанную строку, чтобы начало следующей секции не потерялось. Поля хранят RTL-имя, имя модели, размерность и тип.
+
+## Сопоставление файлов
+
+Для входной секции код ищет подстроку `in_<__Model_Signal__>`, для выходной – `out_<__Model_Signal__>` в имени файла без расширения. Например:
+
+```text
+in_DATA_IN(32u).dat
+out_DATA_VALID_OUT(1u).dat
+```
+
+В старом журнале исходного README встречались выходные имена без `out_`. Текущий код этой ветки ищет указанный префикс, поэтому старый журнал не следует использовать как точное описание правила поиска.
+
+## Структура и ограничения
+
+- `main.py` – класс `App`, генератор секций, поиск файлов и CLI.
+- `classes.py` – модели конфигурации, поток с возвратом строки и проверка соответствий.
+- `output.py` – информационные сообщения, предупреждения и ошибки.
+- `exceptions.py` – ошибки парсера.
+
+## Пример работы парсера
+
+Пример вызова:
 ```shell
 python3 main.py \
-    \-c /tmp/no_errors/PCSTX/otu4_converter/1
-    \-i /tmp/no_errors/PCSTX/otu4_converter
-    \-o /tmp/no_errors/PCSTX/otu4_converter/out_
+  \ -c "/home/truncheon/omo_testchamber/DOCs/Test Vectors/FRAMER_PCS_TX/DESCRAMBLER.csv"
+  \ -i "/home/truncheon/no_errors/PCSTX/descrambler/" 
+  \ -o "/home/truncheon/no_errors/PCSTX/descrambler/" 
+  \ -s "./vectors" 
+  \ --dump-size=2048
+  \ -v
+
+[v]: Working with .csv file at "/home/truncheon/omo_testchamber/DOCs/Test Vectors/FRAMER_PCS_TX/DESCRAMBLER.csv"
+[v]: Checking presence of corresponding fields files at "/home/truncheon/no_errors/PCSTX/descrambler" for input vectors
+[v]: Checking presence of corresponding fields files at "/home/truncheon/no_errors/PCSTX/descrambler" for output vectors
+
+[!]: Warning at 1 row in a table
+[!]: "" doesn't contain "module" and "id" susbstrings
+
 [!]: "" value can't be interpreted as integer, when reading ModuleInfo
 
-[i]: Module: OTU4_CONVERTER
-[i]: Module ID: None
+[v]: Module: DESCRAMBLER
+[v]: Module ID: None
+
+[i]: #Field - {
+[i]:    .rtl_signal = "AIS_EN_IN",
+[i]:    .model_signal = "AIS_EN_IN",
+[i]:    .simulating = "False"
+[i]:    .implementation = "",
+[i]:    .dimension = "1"
+[i]: }
+[i]: "AIS_EN_IN" seems to be non-simulating, therefore skip this field
 
 [i]: #Type - "INPUTS"
-[i]: #Number of bits - 434
-[i]: #Number of bytes - 57
-[i]: #Field - (DATA_IN, [9:0][31:0], 320)
-[i]: #Field - (DATA_VALID_IN, None, 1)
-[i]: #Field - (nHARD_RESET, None, 1)
-[i]: #Field - (DEFAULT_LOGICAL_LANES_SEARCH_ORDER, [19:0][4:0], 104)
-[i]: #Field - (FAS_MATCH_REQUIRED, [5:0], 8)
-[i]: #Field - (OTL_10_UNLOCKS_TO_RESET, [4:0], 8)
-[i]: #Field - (OTU4_CONVERTER_RESET, None, 1)
-[i]: #Field - (-, -, -)
+[i]: #Number of bits - 136
+[i]: #Number of bytes - 17
+[i]: #Field - {
+[i]:    .rtl_signal = "DATA_IN",
+[i]:    .model_signal = "DATA_IN",
+[i]:    .simulating = "True"
+[i]:    .implementation = "[127:0]",
+[i]:    .dimension = "128"
+[i]: }
+[i]: #Field - {
+[i]:    .rtl_signal = "DATA_VALID",
+[i]:    .model_signal = "DATA_VALID_IN",
+[i]:    .simulating = "True"
+[i]:    .implementation = "",
+[i]:    .dimension = "1"
+[i]: }
+[i]: #Field - {
+[i]:    .rtl_signal = "FRAME_BEGIN",
+[i]:    .model_signal = "FRAME_BEGIN_IN",
+[i]:    .simulating = "True"
+[i]:    .implementation = "",
+[i]:    .dimension = "1"
+[i]: }
+[i]: #Field - {
+[i]:    .rtl_signal = "nHARD_RESET",
+[i]:    .model_signal = "nHARD_RESET",
+[i]:    .simulating = "True"
+[i]:    .implementation = "",
+[i]:    .dimension = "1"
+[i]: }
 
 [i]: #Type - "OUTPUTS"
-[i]: #Number of bits - 438
-[i]: #Number of bytes - 62
-[i]: #Field - (OTU4_OUTPUT, [127:0], 128)
-[i]: #Field - (DATA_VALID_OUT, None, 1)
-[i]: #Field - (FRAME_BEGIN, None, 1)
-[i]: #Field - (LOGICAL_LANES_CHANNELS, [19:0][4:0], 104)
-[i]: #Field - (LOGICAL_LANES_DETECTION_DEGREE, [19:0][2:0], 64)
-[i]: #Field - (OTL_OOFLANE, [19:0] , 24)
-[i]: #Field - (OTL_LOFLANE, [19:0] , 24)
-[i]: #Field - (OTL_OOR, [19:0], 24)
-[i]: #Field - (OTL_LOR, [19:0], 24)
-[i]: #Field - (LAST_FAS_DISTANCE, [17:0], 24)
-[i]: #Field - (INPUT_DATA_VALID_RATE, [16:0], 24)
-[i]: #Field - (LAST_FAS_LLM, [7:0], 8)
-[i]: #Field - (LAST_FAS_LOGICAL_LANE, [4:0] , 8)
-[i]: #Field - (LAST_FAS_PHYSICAL_LANE, [4:0], 8)
-[i]: #Field - (SEARCH_LANE_CHANNEL, [4:0], 8)
-[i]: #Field - (LAST_FAS_DETECTION_DEGREE, [2:0], 8)
-[i]: #Field - (OTL4_10_LOCK, None, 1)
-[i]: #Field - (OTL4_10_OUTPUT_BUFFER_OVERFLOW_ERROR, None, 1)
-[i]: #Field - (OTU_OOM, None, 1)
-[i]: #Field - (OTU_OOF, None, 1)
-[i]: #Field - (OTU_LOM, None, 1)
-[i]: #Field - (OTU_LOF, None, 1)
-[i]: #Field - (OTL_LOL, None, 1)
+[i]: #Number of bits - 136
+[i]: #Number of bytes - 17
+[i]: #Field - {
+[i]:    .rtl_signal = "DATA_OUT",
+[i]:    .model_signal = "DATA_OUT",
+[i]:    .simulating = "True"
+[i]:    .implementation = "[127 : 0]",
+[i]:    .dimension = "128"
+[i]: }
+[i]: #Field - {
+[i]:    .rtl_signal = "DATA_VALID_OUT",
+[i]:    .model_signal = "DATA_VALID_OUT",
+[i]:    .simulating = "True"
+[i]:    .implementation = "",
+[i]:    .dimension = "1"
+[i]: }
+[i]: #Field - {
+[i]:    .rtl_signal = "FRAME_BEGIN_OUT",
+[i]:    .model_signal = "FRAME_BEGIN_OUT",
+[i]:    .simulating = "True"
+[i]:    .implementation = "",
+[i]:    .dimension = "1"
+[i]: }
 
-=============== /tmp/no_errors/PCSTX/otu4_converter ===============
-[i]: INPUTS; DATA_IN - file "in_DATA_IN(32u).dat"
-[i]: INPUTS; DATA_VALID_IN - file "in_DATA_VALID_IN(1u).dat"
-[i]: INPUTS; nHARD_RESET - file "in_nHARD_RESET(1u).dat"
-[i]: INPUTS; DEFAULT_LOGICAL_LANES_SEARCH_ORDER - file "in_DEFAULT_LOGICAL_LANES_SEARCH_ORDER(5u).dat"
-[i]: INPUTS; FAS_MATCH_REQUIRED - file "in_FAS_MATCH_REQUIRED(6u).dat"
-[i]: INPUTS; OTL_10_UNLOCKS_TO_RESET - file "in_OTL_10_UNLOCKS_TO_RESET(5u).dat"
-[i]: INPUTS; OTU4_CONVERTER_RESET - file "in_OTU4_CONVERTER_RESET(1u).dat"
-[i]: INPUTS; Number of fields with files - 7; Total number of fields - 8
-[i]: INPUTS; Fields without files - -
+=============== /home/truncheon/no_errors/PCSTX/descrambler ===============
+[i]: INPUTS; "DATA_IN" - file "in_DATA_IN(1u).dat"
+[i]: INPUTS; "DATA_VALID" - file "in_DATA_VALID_IN(1u).dat"
+[i]: INPUTS; "FRAME_BEGIN" - file "in_FRAME_BEGIN_IN(1u).dat"
+[i]: INPUTS; "nHARD_RESET" - file "in_nHARD_RESET(1u).dat"
+[i]: INPUTS; Number of fields with files - 4; Total number of fields - 4
 
-=============== /tmp/no_errors/PCSTX/otu4_converter/out_ ===============
-[i]: OUTPUTS; OTU4_OUTPUT - file "OTU4_OUTPUT(1u).dat"
-[i]: OUTPUTS; DATA_VALID_OUT - file "DATA_VALID_OUT_D(1u).dat"
-[i]: OUTPUTS; FRAME_BEGIN - file "FRAME_BEGIN(1u).dat"
-[i]: OUTPUTS; LOGICAL_LANES_CHANNELS - file "LOGICAL_LANES_CHANNELS_TO_LOGICAL_LANES_OUT(5u).dat"
-[i]: OUTPUTS; LOGICAL_LANES_DETECTION_DEGREE - file "LOGICAL_LANES_DETECTION_DEGREE(3u).dat"
-[i]: OUTPUTS; OTL_OOFLANE - file "OTL_OOFLANE(1u).dat"
-[i]: OUTPUTS; OTL_LOFLANE - file "OTL_LOFLANE(1u).dat"
-[i]: OUTPUTS; OTL_OOR - file "OTL_OOR(1u).dat"
-[i]: OUTPUTS; OTL_LOR - file "OTL_LOR(1u).dat"
-[i]: OUTPUTS; LAST_FAS_DISTANCE - file "LAST_FAS_DISTANCE_OUT(18u).dat"
-[i]: OUTPUTS; INPUT_DATA_VALID_RATE - file "INPUT_DATA_VALID_RATE(17u).dat"
-[i]: OUTPUTS; LAST_FAS_LLM - file "LAST_FAS_LLM(8u).dat"
-[i]: OUTPUTS; LAST_FAS_LOGICAL_LANE - file "LAST_FAS_LOGICAL_LANE(5u).dat"
-[i]: OUTPUTS; LAST_FAS_PHYSICAL_LANE - file "LAST_FAS_PHYSICAL_LANE(5u).dat"
-[i]: OUTPUTS; LAST_FAS_DETECTION_DEGREE - file "LAST_FAS_DETECTION_DEGREE(4u).dat"
-[i]: OUTPUTS; OTL4_10_LOCK - file "OTL4_10_LOCK(1u).dat"
-[i]: OUTPUTS; OTL4_10_OUTPUT_BUFFER_OVERFLOW_ERROR - file "OTL4_10_OUTPUT_BUFFER_OVERFLOW_ERROR(1u).dat"
-[i]: OUTPUTS; OTU_OOM - file "OTU_OOM(1u).dat"
-[i]: OUTPUTS; OTU_OOF - file "OTU_OOF(1u).dat"
-[i]: OUTPUTS; OTU_LOM - file "OTU_LOM(1u).dat"
-[i]: OUTPUTS; OTU_LOF - file "OTU_LOF(1u).dat"
-[i]: OUTPUTS; OTL_LOL - file "OTL_LOL(1u).dat"
-[i]: OUTPUTS; Number of fields with files - 22; Total number of fields - 23
-[i]: OUTPUTS; Fields without files - SEARCH_LANE_CHANNEL
+=============== /home/truncheon/no_errors/PCSTX/descrambler ===============
+[i]: OUTPUTS; "DATA_OUT" - file "out_DATA_OUT(1u).dat"
+[i]: OUTPUTS; "DATA_VALID_OUT" - file "out_DATA_VALID_OUT(1u).dat"
+[i]: OUTPUTS; "FRAME_BEGIN_OUT" - file "out_FRAME_BEGIN_OUT(1u).dat"
+[i]: OUTPUTS; Number of fields with files - 3; Total number of fields - 3
+
+[v]: Total rows read - 14
+
+[v]: "in_DATA_IN(1u).dat" seems to be BINARY
+
+[v]: "in_DATA_VALID_IN(1u).dat" seems to be BINARY
+
+[v]: "in_FRAME_BEGIN_IN(1u).dat" seems to be BINARY
+
+[v]: "in_nHARD_RESET(1u).dat" seems to be BINARY
+
+[v]: Vectores are stored at "/home/truncheon/CSV-configuration-parser/vectors/vectors_0.tv"
+
+[v]: "out_DATA_OUT(1u).dat" seems to be BINARY
+
+[v]: "out_DATA_VALID_OUT(1u).dat" seems to be BINARY
+
+[v]: "out_FRAME_BEGIN_OUT(1u).dat" seems to be BINARY
+
+[v]: Vectores are stored at "/home/truncheon/CSV-configuration-parser/vectors/vectors_1.tv"
+
+Total time - 0:00:23.908457
 ```
